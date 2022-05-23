@@ -14,3 +14,10 @@ Plotly/Dash Workshop (PřF UJEP 26.5.2022)
 8. Interaktivita tabulky.
 9. Bootstrap - responzivita, přehození komponent do Bootstrapu.
 10. Live data - aktualizace intervalů.
+
+## Dash
+
+Dvě části:
+
+- Layout aplikace
+- Interaktivita

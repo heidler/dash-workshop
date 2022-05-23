@@ -1,6 +1,6 @@
-from pyparsing import col
 import requests
 import pandas as pd
+import time
 
 
 def get_request(endpoint, region=None, api_key=None, verify=True):
@@ -18,18 +18,39 @@ def get_live_data(endpoint):
         if x:
             return x["displayName"]
 
-    live_data = pd.DataFrame.from_dict(
-        get_request(endpoint, verify=False)["allPlayers"]
+    data = get_request(endpoint, verify=False)
+
+    all_players = pd.DataFrame.from_dict(data["allPlayers"])
+    events = pd.DataFrame.from_dict(data["events"]["Events"]).fillna("")
+
+    try:
+        assisters = (
+            pd.DataFrame.from_records(events["Assisters"])
+            .reindex(events.index)
+            .add_prefix("Assist")
+        )
+        events = events.join(assisters).drop(columns=["Assisters"])
+        events["EventTime"] = pd.to_datetime(events["EventTime"], unit="s").dt.strftime(
+            "%M:%S"
+        )
+    except:
+        None
+
+    game_data = data["gameData"]
+
+    game_data["gameTime"] = time.strftime(
+        "%H:%M:%S", time.gmtime(game_data["gameTime"])
     )
-    scores = pd.DataFrame.from_records(live_data["scores"]).add_prefix("scores_")
-    summoner_spells = pd.DataFrame.from_records(live_data["summonerSpells"])
+
+    scores = pd.DataFrame.from_records(all_players["scores"]).add_prefix("scores_")
+    summoner_spells = pd.DataFrame.from_records(all_players["summonerSpells"])
     summoner_spells_one = pd.DataFrame.from_records(
         summoner_spells["summonerSpellOne"]
     )["displayName"].rename("summonerSpells_one")
     summoner_spells_two = pd.DataFrame.from_records(
         summoner_spells["summonerSpellTwo"]
     )["displayName"].rename("summonerSpells_two")
-    runes = pd.DataFrame.from_records(live_data["runes"])
+    runes = pd.DataFrame.from_records(all_players["runes"])
     keystone = pd.DataFrame.from_records(runes["keystone"])["displayName"].rename(
         "runes_keystone"
     )
@@ -39,7 +60,7 @@ def get_live_data(endpoint):
     secondary_rune_tree = pd.DataFrame.from_records(runes["secondaryRuneTree"])[
         "displayName"
     ].rename("runes_secondaryTree")
-    items = pd.DataFrame.from_records(live_data["items"])
+    items = pd.DataFrame.from_records(all_players["items"])
     items = items.apply(lambda y: y.apply(get_item_name), axis=1).rename(
         columns={
             0: "items_SlotOne",
@@ -51,8 +72,8 @@ def get_live_data(endpoint):
             6: "items_SlotSeven",
         }
     )
-    live_data = (
-        live_data.join(scores)
+    all_players = (
+        all_players.join(scores)
         .join(summoner_spells_one)
         .join(summoner_spells_two)
         .join(keystone)
@@ -61,6 +82,8 @@ def get_live_data(endpoint):
         .join(items)
         .drop(columns=["scores", "summonerSpells", "runes", "items"])
     )
+
+    live_data = {"player_data": all_players, "game_data": game_data, "events": events}
 
     return live_data
 
@@ -83,6 +106,7 @@ def get_champions(endpoint):
     )
     champions = champions.join(info).drop(columns="info")
     champions = champions.join(stats).drop(columns="stats")
+    champions.rename(columns={"tags": "roles"}, inplace=True)
 
     return champions
 
@@ -104,12 +128,11 @@ def get_items(endpoint):
     return items
 
 
-def filter_tags(x, tag):
-    if tag in x:
-        return True
-    else:
-        return False
+def role_filter(df, role):
+    def filter_tags(x, tag):
+        if tag in x:
+            return True
+        else:
+            return False
 
-
-def tag_filter(df, tag, col):
-    return df.loc[df[col].apply(filter_tags, args=[tag]) == True]
+    return df.loc[df["roles"].apply(filter_tags, args=[role]) == True]
