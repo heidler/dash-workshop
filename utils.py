@@ -1,24 +1,27 @@
 import requests
 import pandas as pd
 import time
+import json
 
 
-def get_request(endpoint, region=None, api_key=None, verify=True):
-    if (not region) & (not api_key):
-        url = endpoint
+def get_data(endpoint, file=False, region=None, api_key=None, verify=False):
+    if file:
+        with open(endpoint, "r", encoding="utf8") as file:
+            return json.load(file)
     else:
-        url = f"{region}{endpoint}/?api_key={api_key}"
-    print(f"URL: {url}")
+        if (not region) & (not api_key):
+            url = endpoint
+        else:
+            url = f"{region}{endpoint}/?api_key={api_key}"
+        print(f"URL: {url}")
 
-    return requests.get(url, verify=verify).json()
+        return requests.get(url, verify=verify).json()
 
 
-def get_live_data(endpoint):
+def transform_live_data(data):
     def get_item_name(x):
         if x:
             return x["displayName"]
-
-    data = get_request(endpoint, verify=False)
 
     all_players = pd.DataFrame.from_dict(data["allPlayers"])
     events = pd.DataFrame.from_dict(data["events"]["Events"]).fillna("")
@@ -88,9 +91,9 @@ def get_live_data(endpoint):
     return live_data
 
 
-def get_champions(endpoint):
+def transform_champions(data):
     champions = (
-        pd.DataFrame.from_dict(get_request(endpoint)["data"], orient="index")
+        pd.DataFrame.from_dict(data["data"], orient="index")
         .reset_index(drop=True)
         .drop(columns=["version", "id", "image"])
     )
@@ -111,8 +114,8 @@ def get_champions(endpoint):
     return champions
 
 
-def get_items(endpoint):
-    items = pd.DataFrame.from_dict(get_request(endpoint)["data"], orient="index")
+def transform_items(data):
+    items = pd.DataFrame.from_dict(data["data"], orient="index")
     gold = (
         pd.DataFrame.from_dict(items["gold"].dropna().to_dict(), orient="index")
         .reindex(items.index)

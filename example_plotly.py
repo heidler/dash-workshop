@@ -1,13 +1,16 @@
-from utils import get_champions, role_filter
+from utils import get_data, transform_champions, role_filter
 import plotly.express as px
 import pandas as pd
 
 # pd.set_option("display.max_columns", None)
 # pd.set_option("display.max_rows", None)
 
-champions = get_champions(
+data = get_data(
     "http://ddragon.leagueoflegends.com/cdn/12.9.1/data/en_US/champion.json"
 )
+
+# data = get_data("assets/champion.json", file=True)
+champions = transform_champions(data)
 
 # print(champions)
 # print(champions.columns)

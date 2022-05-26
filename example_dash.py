@@ -1,9 +1,6 @@
 from dash import Dash, html, dcc, Input, Output, dash_table
 import plotly.express as px
-import pandas as pd
-import plotly.graph_objects as go
-from utils import get_live_data
-import time
+from utils import get_data, transform_live_data
 import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -60,7 +57,9 @@ app.layout = html.Div(
     Input(component_id="interval", component_property="n_intervals"),
 )
 def update_layout(input_dropdown, input_checklist, interval):
-    live_data = get_live_data("https://127.0.0.1:2999/liveclientdata/allgamedata")
+    # data = get_data("https://127.0.0.1:2999/liveclientdata/allgamedata")
+    data = get_data("assets/static_live_data.json", file=True)
+    live_data = transform_live_data(data)
     game_data = live_data["game_data"]
     player_data = live_data["player_data"]
     events = live_data["events"]
